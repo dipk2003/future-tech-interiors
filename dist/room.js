@@ -2,7 +2,8 @@ import * as THREE from './vendor/three.module.js';
 
 export function initRoom() {
   const container = document.querySelector('#room-canvas');
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+  let reduced = motionPreference.matches;
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' }); }
   catch { return; }
@@ -12,8 +13,8 @@ export function initRoom() {
   const camera = new THREE.PerspectiveCamera(37, 1, .1, 100);
   const group = new THREE.Group(); scene.add(group);
   const phases = { shell: [], floor: [], panels: [], sofa: [], rug: [], tables: [], chair: [], details: [], lights: [], greenery: [] };
-  let phase = 'shell';
-  function add(mesh) { group.add(mesh); phases[phase].push(mesh); return mesh; }
+  let phase = 'shell',wallSide=null;
+  function add(mesh) { group.add(mesh); phases[phase].push(mesh); if(wallSide)mesh.userData.wallSide=wallSide;return mesh; }
   const mat = (color, roughness = .85) => new THREE.MeshStandardMaterial({ color, roughness });
   const wallMat = mat('#ded7c5'), floorMat = mat('#b29370'), sofaMat = mat('#e6dfcf'), accentMat = mat('#a78c66'), woodMat = mat('#886948'), stoneMat = mat('#e5ddc8'), metalMat = mat('#65533d', .35);
   function box(w, h, d, material, x, y, z) { const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material); mesh.position.set(x,y,z); mesh.castShadow = true; mesh.receiveShadow = true; return add(mesh); }
@@ -25,16 +26,21 @@ export function initRoom() {
   for(let i=0;i<20;i++) box(.297,.035,5,floorMat,-2.85+i*.3,-.045,0);
   box(6,.06,.025,woodMat,0,-.015,2.51);
   phase='shell';
+  wallSide='back';
   box(6,3,.12,wallMat,0,1.43,-2.5);
+  wallSide='left';
   box(.12,3,5,wallMat,-3,1.43,0);
   phase='panels';
+  wallSide='back';
   for(let i=0;i<12;i++) box(.045,2.9,.05,woodMat,-2.8+i*.17,1.45,-2.4);
+  wallSide='left';
   box(.13,3,.14,woodMat,-3,1.43,2.5);
   const glass = new THREE.MeshStandardMaterial({color:'#dce5d9',roughness:.2,transparent:true,opacity:.55});
   box(.14,2.25,2.1,woodMat,-2.9,1.65,.55); box(.16,2.08,1.92,glass,-2.82,1.65,.55);
   box(.18,.035,1.94,woodMat,-2.7,1.65,.55);box(.18,2.08,.035,woodMat,-2.7,1.65,.55);
   const curtain = mat('#f1e8d8');for(let i=0;i<5;i++) cylinder(.045,.045,2.5,curtain,-2.64,1.65,1.53+i*.05);
   // A low, generously upholstered sofa.
+  wallSide=null;
   phase='sofa';
   roundBox(3,.45,1.08,sofaMat,.4,.48,-1.55,.12);
   roundBox(3,.85,.28,sofaMat,.4,.9,-2,.1);
@@ -59,9 +65,11 @@ export function initRoom() {
   [-2.22,-1.58].forEach(x => [.58,1.15].forEach(z => box(.04,.52,.04,woodMat,x,.27,z)));
   // Artwork, console, lamps and greenery.
   phase='details';
+  wallSide='back';
   box(1.28,1.43,.065,woodMat,.6,1.98,-2.39);box(1.17,1.32,.07,mat('#eee8dc'),.6,1.98,-2.34);
   const art=new THREE.Mesh(new THREE.CircleGeometry(.39,48),mat('#a98c6c'));art.position.set(.6,2.03,-2.29);add(art);
   box(.08,.7,.03,mat('#65705d'),.82,1.96,-2.27);
+  wallSide=null;
   box(.85,.68,.42,woodMat,2.43,.34,-2.08);box(.9,.05,.48,stoneMat,2.43,.72,-2.08);
   cylinder(.1,.14,.3,mat('#d7cbb6'),2.43,.89,-2.08);
   phase='lights';
@@ -79,6 +87,14 @@ export function initRoom() {
     mesh.userData.finishedPosition = mesh.position.clone();
     mesh.userData.finishedScale = mesh.scale.clone();
   });
+  // Fade only the wall facing the outside camera, keeping the interior visible for all 360 degrees.
+  const cutawayMeshes=Object.values(phases).flat().filter(mesh=>mesh.userData.wallSide);
+  cutawayMeshes.forEach(mesh=>{
+    mesh.userData.wallFinish=mesh.material===wallMat;
+    mesh.material=mesh.material.clone();
+    mesh.userData.finishedOpacity=mesh.material.opacity;
+    mesh.material.transparent=true;
+  });
   const shadow = new THREE.Mesh(new THREE.PlaneGeometry(40,40), new THREE.ShadowMaterial({ opacity:.22 }));
   shadow.rotation.x=-Math.PI/2;shadow.position.y=-.3;shadow.receiveShadow=true;scene.add(shadow);
   const grainCanvas=document.createElement('canvas');grainCanvas.width=128;grainCanvas.height=512;
@@ -91,8 +107,13 @@ export function initRoom() {
   const ease=value=>1-Math.pow(1-clamp(value),3);
   const schedule={floor:[.8,1.2,.07],panels:[3,1.6,.035],rug:[5.6,1.4,.012],sofa:[6.8,1.6,.035],chair:[8.8,1.4,.03],tables:[10,1.4,.035],details:[11.5,1.3,.04],greenery:[12.5,1.4,.018],lights:[14,1.3,.06]};
   const duration=18;
-  let elapsed=reduced?duration:0,visible=false,frameId=0,lastTime=0,contextLost=false;
+  const orbitDuration=24;
+  let elapsed=reduced?duration:0,orbitTime=0,rotationOffset=0,visible=false,frameId=0,lastTime=0,contextLost=false;
+  let dragging=false,pointerX=0,lastBuildTime=-1;
+  container.tabIndex=0;
+  container.setAttribute('aria-label','A room being designed, automatically rotating through 360 degrees. Drag horizontally or use the left and right arrow keys to rotate.');
   function install(time){
+    if(time!==lastBuildTime){
     for(const [name,[start,length,stagger]] of Object.entries(schedule)){
       phases[name].forEach((mesh,index)=>{
         const progress=ease((time-start-index*stagger)/length);
@@ -108,17 +129,35 @@ export function initRoom() {
     wallMat.color.copy(roughWall).lerp(finishedWall,ease((time-2)/3));
     const lighting=ease((time-14.6)/2);warm.intensity=lighting*13;lampGlow.emissiveIntensity=.12+lighting*.85;
     ambient.intensity=2.5-lighting*.5;sun.intensity=4.5-lighting*.9;
-    const progress=clamp(time/duration),theta=.9-progress*.37,elevation=.63-progress*.09,radius=12.3-progress*.7;
+    lastBuildTime=time;
+    }
+    const progress=clamp(time/duration),theta=(reduced?.53:.9+orbitTime*Math.PI*2/orbitDuration)+rotationOffset,elevation=.63-progress*.09,radius=12.3-progress*.7;
     camera.position.set(Math.sin(theta)*radius,Math.sin(elevation)*radius,Math.cos(theta)*radius);camera.lookAt(0,1,0);
+    cutawayMeshes.forEach(mesh=>{
+      const facing=mesh.userData.wallSide==='back'?Math.cos(theta):Math.sin(theta);
+      const openness=THREE.MathUtils.smoothstep(facing,-.35,.15);
+      mesh.material.opacity=mesh.userData.finishedOpacity*(.025+.975*openness);
+      mesh.material.depthWrite=openness>.98;
+      mesh.castShadow=openness>.5;
+      if(mesh.userData.wallFinish)mesh.material.color.copy(wallMat.color);
+    });
+    const turns=String(Math.floor(orbitTime/orbitDuration));
+    if(container.dataset.orbitTurns!==turns)container.dataset.orbitTurns=turns;
     const stage=time<3?'shell':time<6.8?'finishes':time<11.5?'furniture':time<15?'styling':'complete';
     if(container.dataset.buildStage!==stage)container.dataset.buildStage=stage;
     renderer.render(scene,camera);
   }
   function resize(){const width=container.clientWidth,height=container.clientHeight;if(!width||!height||contextLost)return;renderer.setSize(width,height);camera.aspect=width/height;camera.fov=width<400?46:width<650?41:37;camera.updateProjectionMatrix();install(elapsed);}
   new ResizeObserver(resize).observe(container);resize();
-  function tick(time){frameId=0;if(!visible||document.hidden||contextLost)return;const delta=lastTime?Math.min((time-lastTime)/1000,.06):0;lastTime=time;elapsed=Math.min(duration,elapsed+delta);install(elapsed);if(elapsed<duration)frameId=requestAnimationFrame(tick);}
+  function tick(time){frameId=0;if(!visible||document.hidden||contextLost||reduced)return;const delta=lastTime?Math.min((time-lastTime)/1000,.15):0;lastTime=time;elapsed=Math.min(duration,elapsed+delta);if(!dragging)orbitTime+=delta;install(elapsed);frameId=requestAnimationFrame(tick);}
   function play(){if(reduced||frameId||!visible||document.hidden||contextLost)return;lastTime=0;frameId=requestAnimationFrame(tick);}
-  new IntersectionObserver(entries=>{const next=entries[0].isIntersecting;if(next&&!visible&&elapsed>=duration&&!reduced)elapsed=0;visible=next;if(!visible){cancelAnimationFrame(frameId);frameId=0;lastTime=0;}else play();},{threshold:.15}).observe(container);
+  new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;if(!visible){cancelAnimationFrame(frameId);frameId=0;lastTime=0;}else play();},{threshold:.15}).observe(container);
+  container.addEventListener('pointerdown',event=>{if(event.pointerType==='mouse'&&event.button!==0)return;dragging=true;pointerX=event.clientX;container.setPointerCapture(event.pointerId);container.classList.add('is-dragging');});
+  container.addEventListener('pointermove',event=>{if(!dragging)return;rotationOffset+=(pointerX-event.clientX)*.009;pointerX=event.clientX;if(reduced)install(elapsed);});
+  function releasePointer(){dragging=false;container.classList.remove('is-dragging');}
+  container.addEventListener('pointerup',releasePointer);container.addEventListener('pointercancel',releasePointer);container.addEventListener('lostpointercapture',releasePointer);
+  container.addEventListener('keydown',event=>{if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;event.preventDefault();rotationOffset+=event.key==='ArrowLeft'?-.18:.18;install(elapsed);});
+  motionPreference.addEventListener('change',event=>{reduced=event.matches;cancelAnimationFrame(frameId);frameId=0;lastTime=0;if(reduced){elapsed=duration;install(elapsed);}else play();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(frameId);frameId=0;lastTime=0;}else play();});
   renderer.domElement.addEventListener('webglcontextlost',event=>{event.preventDefault();contextLost=true;cancelAnimationFrame(frameId);const fallback=document.createElement('img');fallback.src='/assets/living.jpg';fallback.alt='A completed interior design concept with natural materials';container.replaceChildren(fallback);});
   install(elapsed);
