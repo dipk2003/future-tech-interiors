@@ -1,0 +1,6 @@
+node_modules/
+.openai/
+.git/
+*.tar.gz
+.env*
+server.mjs
