@@ -15,15 +15,6 @@ addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
 document.documentElement.classList.add('motion-ready');
 const reveal = new IntersectionObserver(entries => entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('in-view'); reveal.unobserve(entry.target); } }), { threshold: .08 });
 $$('.reveal').forEach(element => reveal.observe(element));
-const slides = $$('.hero-image'); let slide = 0, timer, slidesPaused = reduceMotion;
-function showSlide(index) { slide = (index + slides.length) % slides.length; slides.forEach((image, i) => image.classList.toggle('active', i === slide)); $('#slide-number').textContent = String(slide + 1).padStart(2, '0'); $('.slide-track i').style.transform = `translateX(${slide * 100}%)`; }
-function restartSlides() { clearInterval(timer); if (!slidesPaused && !document.hidden) timer = setInterval(() => showSlide(slide + 1), 8000); }
-function updateSlidePause() { $('#pause-slides').setAttribute('aria-pressed', String(slidesPaused)); $('#pause-slides').setAttribute('aria-label', slidesPaused ? 'Play slideshow' : 'Pause slideshow'); $('#pause-slides').textContent = slidesPaused ? '▷' : 'Ⅱ'; $('.hero-images').classList.toggle('camera-paused', slidesPaused); restartSlides(); }
-$('#pause-slides').addEventListener('click', () => { slidesPaused = !slidesPaused; updateSlidePause(); });
-updateSlidePause();
-$('#prev-slide').addEventListener('click', () => { showSlide(slide - 1); restartSlides(); });
-$('#next-slide').addEventListener('click', () => { showSlide(slide + 1); restartSlides(); });
-document.addEventListener('visibilitychange', restartSlides); restartSlides();
 $$('[data-filter]').forEach(button => button.addEventListener('click', () => {
   $$('[data-filter]').forEach(b => { const active = b === button; b.classList.toggle('active', active); b.setAttribute('aria-pressed', String(active)); });
   $$('.project-card').forEach(card => { card.hidden = button.dataset.filter !== 'all' && card.dataset.category !== button.dataset.filter; card.classList.add('in-view'); });
@@ -49,6 +40,6 @@ $$('[data-project]').forEach(button => button.addEventListener('click', () => { 
 $('#discuss-project').addEventListener('click', () => { $('#project-dialog').close(); openConsult(); });
 $('#year').textContent = new Date().getFullYear();
 let roomLoaded = false;
-const roomObserver = new IntersectionObserver(entries => { if (entries[0].isIntersecting && !roomLoaded) { roomLoaded = true; import('./room.js').then(module => module.initRoom()).catch(() => { $('#room-canvas').innerHTML = '<div class="room-loading">3D isn’t available on this device. Explore our design concepts above.</div>'; }); roomObserver.disconnect(); } }, { rootMargin: '400px' });
+const roomObserver = new IntersectionObserver(entries => { if (entries[0].isIntersecting && !roomLoaded) { roomLoaded = true; import('./room.js').then(module => module.initRoom()).catch(() => { $('#room-canvas').innerHTML = '<img src="/assets/living.jpg" alt="A completed interior design concept with warm natural materials">'; }); roomObserver.disconnect(); } }, { rootMargin: '400px' });
 roomObserver.observe($('#experience'));
 initCinematic();
