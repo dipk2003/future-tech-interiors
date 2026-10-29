@@ -1,5 +1,5 @@
 {
-  "name": "aangan-studio",
+  "name": "future-tech-interiors",
   "version": "1.0.0",
   "scripts": {
     "start": "node server.mjs"
@@ -9,6 +9,7 @@
   "license": "ISC",
   "description": "Cinematic interior design website for Future Tech Interiors, Noida",
   "dependencies": {
+    "gsap": "^3.15.0",
     "three": "^0.186.1"
   },
   "type": "module"

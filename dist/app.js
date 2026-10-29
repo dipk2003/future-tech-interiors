@@ -1,3 +1,4 @@
+import { initCinematic } from './cinematic.js';
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -14,9 +15,12 @@ addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
 document.documentElement.classList.add('motion-ready');
 const reveal = new IntersectionObserver(entries => entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('in-view'); reveal.unobserve(entry.target); } }), { threshold: .08 });
 $$('.reveal').forEach(element => reveal.observe(element));
-const slides = $$('.hero-image'); let slide = 0, timer;
+const slides = $$('.hero-image'); let slide = 0, timer, slidesPaused = reduceMotion;
 function showSlide(index) { slide = (index + slides.length) % slides.length; slides.forEach((image, i) => image.classList.toggle('active', i === slide)); $('#slide-number').textContent = String(slide + 1).padStart(2, '0'); $('.slide-track i').style.transform = `translateX(${slide * 100}%)`; }
-function restartSlides() { clearInterval(timer); if (!reduceMotion && !document.hidden) timer = setInterval(() => showSlide(slide + 1), 8000); }
+function restartSlides() { clearInterval(timer); if (!slidesPaused && !document.hidden) timer = setInterval(() => showSlide(slide + 1), 8000); }
+function updateSlidePause() { $('#pause-slides').setAttribute('aria-pressed', String(slidesPaused)); $('#pause-slides').setAttribute('aria-label', slidesPaused ? 'Play slideshow' : 'Pause slideshow'); $('#pause-slides').textContent = slidesPaused ? '▷' : 'Ⅱ'; $('.hero-images').classList.toggle('camera-paused', slidesPaused); restartSlides(); }
+$('#pause-slides').addEventListener('click', () => { slidesPaused = !slidesPaused; updateSlidePause(); });
+updateSlidePause();
 $('#prev-slide').addEventListener('click', () => { showSlide(slide - 1); restartSlides(); });
 $('#next-slide').addEventListener('click', () => { showSlide(slide + 1); restartSlides(); });
 document.addEventListener('visibilitychange', restartSlides); restartSlides();
@@ -47,3 +51,4 @@ $('#year').textContent = new Date().getFullYear();
 let roomLoaded = false;
 const roomObserver = new IntersectionObserver(entries => { if (entries[0].isIntersecting && !roomLoaded) { roomLoaded = true; import('./room.js').then(module => module.initRoom()).catch(() => { $('#room-canvas').innerHTML = '<div class="room-loading">3D isn’t available on this device. Explore our design concepts above.</div>'; }); roomObserver.disconnect(); } }, { rootMargin: '400px' });
 roomObserver.observe($('#experience'));
+initCinematic();

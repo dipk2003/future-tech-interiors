@@ -62,19 +62,23 @@ export function initRoom() {
   const ambient=new THREE.HemisphereLight('#f2eddd','#555d40',2.5);scene.add(ambient);
   const sun=new THREE.DirectionalLight('#fff0ce',4.5);sun.position.set(-3,7,5);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-5;sun.shadow.camera.right=5;sun.shadow.camera.top=5;sun.shadow.camera.bottom=-5;sun.shadow.normalBias=.025;sun.shadow.bias=-.00015;scene.add(sun);
   const warm=new THREE.PointLight('#ffbb65',0,9);warm.position.set(2.4,1.9,-.7);scene.add(warm);
-  let theta=.62,targetTheta=.62, elevation=.57,night=false,palette=0,visible=true,dragging=false,lastX=0;
+  let theta=reduced?.62:.32,targetTheta=.62, elevation=.57,night=false,palette=0,visible=true,dragging=false,lastX=0,touring=false,tourTime=0,lastFrame=0;
+  const tourButton=document.querySelector('#room-tour');
+  function stopTour(){touring=false;targetTheta=theta;tourButton.setAttribute('aria-pressed','false');tourButton.querySelector('.tour-state').textContent='▷';tourButton.querySelector('.tour-button-label').textContent='Play cinematic tour';}
+  if(reduced){tourButton.disabled=true;tourButton.querySelector('.tour-button-label').textContent='Reduced motion on';}
+  tourButton.addEventListener('click',()=>{if(touring){stopTour();return;}touring=true;tourTime=Math.asin(Math.max(-1,Math.min(1,(theta-.62)/.4)))/.22;tourButton.setAttribute('aria-pressed','true');tourButton.querySelector('.tour-state').textContent='Ⅱ';tourButton.querySelector('.tour-button-label').textContent='Pause cinematic tour';});
   const palettes=[['#ded7c5','#b29370','#e6dfcf','#a78c66','#886948'],['#cbd0bc','#bdb59f','#e5e0d3','#818a72','#87816a'],['#cfbda4','#8c694e','#d4c3ad','#84624c','#5f4635']];
   const labels=['Warm oak','Sage & stone','Walnut'];
   function status(){document.querySelector('.room-status').textContent=`${labels[palette]} · ${night?'Evening':'Daylight'}`;}
   document.querySelectorAll('[data-palette]').forEach(button=>button.addEventListener('click',()=>{palette=Number(button.dataset.palette);paletteMats.forEach((material,i)=>material.color.set(palettes[palette][i]));document.querySelectorAll('[data-palette]').forEach(b=>{b.classList.toggle('active',b===button);b.setAttribute('aria-pressed',String(b===button));});status();render();}));
   document.querySelector('#light-toggle').addEventListener('click',event=>{night=!night;event.currentTarget.setAttribute('aria-pressed',String(night));document.querySelector('#light-label').textContent=night?'Evening':'Daylight';ambient.intensity=night?.85:2.5;sun.intensity=night?.65:4.5;sun.color.set(night?'#94a2b5':'#fff0ce');warm.intensity=night?17:0;lampGlow.emissiveIntensity=night?1.5:.12;renderer.toneMappingExposure=night?1.05:1.2;status();render();});
-  function rotate(delta){targetTheta=Math.max(-.4,Math.min(1.5,targetTheta+delta));if(reduced){theta=targetTheta;render();}}
-  document.querySelector('#rotate-left').addEventListener('click',()=>rotate(-.25));document.querySelector('#rotate-right').addEventListener('click',()=>rotate(.25));document.querySelector('#reset-room').addEventListener('click',()=>{targetTheta=.62;if(reduced){theta=targetTheta;render();}});
-  container.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;container.setPointerCapture(e.pointerId);});container.addEventListener('pointermove',e=>{if(!dragging)return;rotate((lastX-e.clientX)*.006);lastX=e.clientX;});container.addEventListener('pointerup',()=>dragging=false);container.addEventListener('pointercancel',()=>dragging=false);
+  function rotate(delta){if(touring)stopTour();targetTheta=Math.max(-.4,Math.min(1.5,targetTheta+delta));if(reduced){theta=targetTheta;render();}}
+  document.querySelector('#rotate-left').addEventListener('click',()=>rotate(-.25));document.querySelector('#rotate-right').addEventListener('click',()=>rotate(.25));document.querySelector('#reset-room').addEventListener('click',()=>{stopTour();targetTheta=.62;elevation=.57;if(reduced){theta=targetTheta;render();}});
+  container.addEventListener('pointerdown',e=>{if(touring)stopTour();dragging=true;lastX=e.clientX;container.setPointerCapture(e.pointerId);});container.addEventListener('pointermove',e=>{if(!dragging)return;rotate((lastX-e.clientX)*.006);lastX=e.clientX;});container.addEventListener('pointerup',()=>dragging=false);container.addEventListener('pointercancel',()=>dragging=false);
   function render(){const radius=11.9;camera.position.set(Math.sin(theta)*radius,Math.sin(elevation)*radius,Math.cos(theta)*radius);camera.lookAt(0,.9,0);renderer.render(scene,camera);}
   function resize(){const width=container.clientWidth,height=container.clientHeight;renderer.setSize(width,height);camera.aspect=width/height;camera.fov=width<400?45:37;camera.updateProjectionMatrix();render();}new ResizeObserver(resize).observe(container);resize();
   new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;}).observe(container);
   renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();container.innerHTML='<div class="room-loading">3D paused on this device. Refresh the page to explore again.</div>';});
-  function animate(){requestAnimationFrame(animate);if(!visible||document.hidden||reduced)return;if(Math.abs(targetTheta-theta)>.0001){theta+=(targetTheta-theta)*.07;render();}}
+  function animate(time=0){requestAnimationFrame(animate);const delta=Math.min((time-lastFrame)/1000,.05);lastFrame=time;if(!visible||document.hidden||reduced)return;if(touring){tourTime+=delta;theta=.62+Math.sin(tourTime*.22)*.4;elevation=.57+Math.sin(tourTime*.17)*.035;render();}else if(Math.abs(targetTheta-theta)>.0001){theta+=(targetTheta-theta)*.07;render();}}
   animate();
 }
