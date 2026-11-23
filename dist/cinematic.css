@@ -9,3 +9,24 @@
 @media(max-width:540px){.build-film{padding:55px 7% 20px}.build-copy h2{font-size:clamp(43px,11vw,54px)}.build-copy>p:not(.eyebrow){font-size:11px}.build-copy .eyebrow{font-size:7px;letter-spacing:1.8px}.build-scene{margin:5px -5% 0}#room-canvas{height:370px}.intro-signature>span{font-size:12px;letter-spacing:5px}.intro-signature em{font-size:30px}}
 @media(prefers-reduced-motion:reduce){.hero-images{inset:0}.cinema-intro{display:none}.contact-image{will-change:auto}.hero-line>span,.hero-line>em{transform:none!important}}
 .build-scene #room-canvas{cursor:grab;touch-action:pan-y;user-select:none}.build-scene #room-canvas.is-dragging{cursor:grabbing}
+/* Keep the complete value strip visible at every viewport width. */
+.belief-strip i{display:block;width:14px;height:14px;flex:0 0 14px;background:#8e977e;clip-path:polygon(43% 0,57% 0,57% 33%,81% 9%,91% 19%,67% 43%,100% 43%,100% 57%,67% 57%,91% 81%,81% 91%,57% 67%,57% 100%,43% 100%,43% 67%,19% 91%,9% 81%,33% 57%,0 57%,0 43%,33% 43%,9% 19%,19% 9%,43% 33%)}
+@media(max-width:800px){
+  html{scroll-padding-top:96px}
+  .header,.header.scrolled{height:80px}
+  .belief-strip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));height:auto;min-height:110px;padding:18px 7%;gap:14px 20px;white-space:normal;overflow:visible}
+  .belief-strip>i{display:none}
+  .belief-strip>span{display:flex;align-items:center;gap:9px;min-width:0;white-space:normal;font-size:8px;line-height:1.7;letter-spacing:1.1px}
+  .belief-strip>span:before{content:'';display:block;flex:0 0 5px;width:5px;height:5px;background:#8e977e;transform:rotate(45deg)}
+  .hero{display:flex;align-items:center;height:auto;min-height:100svh;max-height:none;padding:144px 7% 80px}
+  .hero-content{position:relative;inset:auto;width:100%;min-width:0}
+  .hero-line{padding-bottom:.18em;margin-bottom:-.18em;padding-right:.08em}
+  .intro>*{min-width:0}
+  .mobile-nav a,.mobile-nav button{max-width:100%;font-size:clamp(30px,8.5vw,39px);overflow-wrap:anywhere}
+}
+@media(max-width:540px){
+  .hero{min-height:100svh;padding:136px 7% 72px}
+  .hero h1{font-size:clamp(48px,12.8vw,68px)}
+  .belief-strip{gap:14px 16px}
+  .intro h2{font-size:clamp(41px,11.5vw,49px)}
+}

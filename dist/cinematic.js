@@ -20,8 +20,6 @@ export function initCinematic() {
     const start = atTop ? 1.15 : 0;
     opening.from('.hero-line > *', { yPercent: 115, rotation: 3, duration: 1.35, stagger: .16 }, start)
       .from('.hero-content > .eyebrow, .hero-bottom', { autoAlpha: 0, y: 22, duration: .9, stagger: .12 }, start + .55);
-    gsap.to('.hero-content', { y: 100, opacity: .15, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: .7 } });
-    gsap.to('.hero-images', { yPercent: 13, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: .7 } });
     gsap.to('.contact-image', { yPercent: 10, scale: 1.15, ease: 'none', scrollTrigger: { trigger: '.contact', start: 'top bottom', end: 'bottom top', scrub: .8 } });
     const refresh = () => requestAnimationFrame(() => ScrollTrigger.refresh());
     const filters = [...document.querySelectorAll('[data-filter]')];
@@ -36,8 +34,10 @@ export function initCinematic() {
       details.forEach(detail => detail.removeEventListener('toggle', refresh));
     };
   });
-  media.add('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)', () => {
+  media.add('(min-width: 801px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)', () => {
     const hero = document.querySelector('.hero');
+    gsap.to('.hero-content', { y: 100, opacity: .15, ease: 'none', scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: .7 } });
+    gsap.to('.hero-images', { yPercent: 13, ease: 'none', scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: .7 } });
     const xTo = gsap.quickTo('.hero-images', 'x', { duration: 1.4, ease: 'power3.out' });
     const move = event => xTo((event.clientX / innerWidth - .5) * -25);
     const leave = () => xTo(0);
